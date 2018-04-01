@@ -1,0 +1,301 @@
+﻿{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "site_name": {
+      "defaultValue": "kcsara",
+      "type": "string"
+    },
+    "api_branch": {
+      "defaultValue": "master",
+      "type": "string"
+    },
+    "auth_branch": {
+      "defaultValue": "master",
+      "type": "string"
+    },
+    "apps_plan": {
+      "defaultValue": "D1",
+      "type": "string"
+    },
+    "sites_kcsara_data_funcs_name": {
+      "defaultValue": "kcsara-data-funcs",
+      "type": "string"
+    },
+    "components_kcsara_api_name": {
+      "defaultValue": "kcsara-api",
+      "type": "string"
+    },
+    "config_web_name": {
+      "defaultValue": "web",
+      "type": "string"
+    },
+    "serverfarms_kcsara_data_apps_name": {
+      "defaultValue": "kcsara-data-apps",
+      "type": "string"
+    },
+    "storageAccounts_kcsaradata_name": {
+      "defaultValue": "kcsaradata",
+      "type": "string"
+    },
+    "config_web_name_1": {
+      "defaultValue": "web",
+      "type": "string"
+    },
+    "hostNameBindings_kcsara_api.azurewebsites.net_name": {
+      "defaultValue": "kcsara-api.azurewebsites.net",
+      "type": "string"
+    },
+    "hostNameBindings_kcsara_data_funcs.azurewebsites.net_name": {
+      "defaultValue": "kcsara-data-funcs.azurewebsites.net",
+      "type": "string"
+    }
+  },
+  "variables": {},
+  "resources": [
+    {
+      "comments": "",
+      "type": "microsoft.insights/components",
+      "kind": "web",
+      "name": "[concat(parameters('site_name'),'-insights')]",
+      "apiVersion": "2015-05-01",
+      "location": "westus2",
+      "scale": null,
+      "properties": {
+        "Application_Type": "web"
+      }
+    },
+    {
+      "comments": "",
+      "type": "Microsoft.Storage/storageAccounts",
+      "sku": {
+        "name": "Standard_LRS",
+        "tier": "Standard"
+      },
+      "kind": "StorageV2",
+      "name": "[concat(parameters('site_name'), 'data')]",
+      "apiVersion": "2017-10-01",
+      "location": "westus2",
+      "properties": {
+        "networkAcls": {
+          "bypass": "AzureServices",
+          "defaultAction": "Allow"
+        },
+        "supportsHttpsTrafficOnly": true,
+        "encryption": {
+          "services": {
+            "file": {
+              "enabled": true
+            },
+            "blob": {
+              "enabled": true
+            }
+          },
+          "keySource": "Microsoft.Storage"
+        },
+        "accessTier": "Hot"
+      },
+      "dependsOn": []
+    },
+    {
+      "comments": "",
+      "type": "Microsoft.Web/serverfarms",
+      "sku": {
+        "name": "[parameters('apps_plan')]"
+      },
+      "kind": "app",
+      "name": "[concat(parameters('site_name'),'-apps')]",
+      "apiVersion": "2016-09-01",
+      "location": "West US 2",
+      "scale": null,
+      "properties": {
+        "name": "[concat(parameters('site_name'),'-apps')]"
+      },
+      "dependsOn": []
+    },
+    {
+      "comments": "",
+      "type": "Microsoft.Web/sites",
+      "kind": "functionapp",
+      "name": "[concat(parameters('site_name'),'-funcs')]",
+      "apiVersion": "2016-08-01",
+      "location": "West US 2",
+      "properties": {
+        "enabled": true,
+        "hostNameSslStates": [
+          {
+            "name": "[concat(parameters('site_name'),'-funcs.azurewebsites.net')]",
+            "sslState": "Disabled",
+            "hostType": "Standard"
+          },
+          {
+            "name": "[concat(parameters('site_name'),'-funcs.scm.azurewebsites.net')]",
+            "sslState": "Disabled",
+            "hostType": "Repository"
+          }
+        ],
+        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', concat(parameters('site_name'),'-apps'))]"
+      },
+      "resources": [
+        {
+          "comments": "",
+          "type": "Microsoft.Web/sites/hostNameBindings",
+          "name": "[concat(parameters('site_name'),'-funcs/', parameters('site_name'), '-funcs.azurewebsites.net')]",
+          "apiVersion": "2016-08-01",
+          "location": "West US 2",
+          "dependsOn": [
+            "[resourceId('Microsoft.Web/sites', concat(parameters('site_name'),'-funcs'))]"
+          ]
+        }
+      ],
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/serverfarms', concat(parameters('site_name'),'-apps'))]"
+      ]
+    },
+    {
+      "comments": "",
+      "type": "Microsoft.Web/sites",
+      "kind": "app",
+      "name": "[concat(parameters('site_name'),'-api')]",
+      "apiVersion": "2016-08-01",
+      "location": "West US 2",
+      "properties": {
+        "enabled": true,
+        "hostNameSslStates": [
+          {
+            "name": "[concat(parameters('site_name'),'-api.azurewebsites.net')]",
+            "sslState": "Disabled",
+            "virtualIP": null,
+            "thumbprint": null,
+            "toUpdate": null,
+            "hostType": "Standard"
+          },
+          {
+            "name": "[concat(parameters('site_name'),'-api.scm.azurewebsites.net')]",
+            "sslState": "Disabled",
+            "virtualIP": null,
+            "thumbprint": null,
+            "toUpdate": null,
+            "hostType": "Repository"
+          }
+        ],
+        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', concat(parameters('site_name'),'-apps'))]"
+      },
+      "resources": [
+        {
+          "apiVersion": "2015-08-01",
+          "name": "web",
+          "type": "sourcecontrols",
+          "dependsOn": [
+            "[resourceId('Microsoft.Web/Sites', concat(parameters('site_name'), '-api'))]"
+          ],
+          "properties": {
+            "RepoUrl": "https://github.com/kingcountysar/sartracks-api",
+            "branch": "[parameters('api_branch')]"
+          }
+        },
+        {
+          "name": "appsettings",
+          "type": "config",
+          "apiVersion": "2015-08-01",
+          "dependsOn": [
+            "[resourceId('Microsoft.Web/sites', concat(parameters('site_name'),'-api'))]"
+          ],
+          "tags": {
+            "displayName": "config"
+          },
+          "properties": {
+            "APPINSIGHTS_INSTRUMENTATIONKEY": "[reference(concat('microsoft.insights/components/', parameters('site_name'), '-insights')).InstrumentationKey]"
+          }
+        },
+        {
+          "comments": "",
+          "type": "Microsoft.Web/sites/hostNameBindings",
+          "name": "[concat(parameters('site_name'), '-api/', parameters('site_name'), '-api.azurewebsites.net')]",
+          "apiVersion": "2016-08-01",
+          "location": "West US 2",
+          "dependsOn": [
+            "[resourceId('Microsoft.Web/sites', concat(parameters('site_name'), '-api'))]"
+          ]
+        }
+      ],
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/serverfarms', concat(parameters('site_name'),'-apps'))]",
+        "[resourceId('microsoft.insights/components/', concat(parameters('site_name'), '-insights'))]"
+      ]
+    },
+    {
+      "comments": "",
+      "type": "Microsoft.Web/sites",
+      "kind": "app",
+      "name": "[concat(parameters('site_name'),'-auth')]",
+      "apiVersion": "2016-08-01",
+      "location": "West US 2",
+      "properties": {
+        "enabled": true,
+        "hostNameSslStates": [
+          {
+            "name": "[concat(parameters('site_name'),'-auth.azurewebsites.net')]",
+            "sslState": "Disabled",
+            "virtualIP": null,
+            "thumbprint": null,
+            "toUpdate": null,
+            "hostType": "Standard"
+          },
+          {
+            "name": "[concat(parameters('site_name'),'-auth.scm.azurewebsites.net')]",
+            "sslState": "Disabled",
+            "virtualIP": null,
+            "thumbprint": null,
+            "toUpdate": null,
+            "hostType": "Repository"
+          }
+        ],
+        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', concat(parameters('site_name'),'-apps'))]"
+      },
+      "resources": [
+        {
+          "apiVersion": "2015-08-01",
+          "name": "web",
+          "type": "sourcecontrols",
+          "dependsOn": [
+            "[resourceId('Microsoft.Web/Sites', concat(parameters('site_name'), '-auth'))]"
+          ],
+          "properties": {
+            "RepoUrl": "https://github.com/kingcountysar/sartracks-auth",
+            "branch": "[parameters('auth_branch')]"
+          }
+        },
+        {
+          "name": "appsettings",
+          "type": "config",
+          "apiVersion": "2015-08-01",
+          "dependsOn": [
+            "[resourceId('Microsoft.Web/sites', concat(parameters('site_name'),'-auth'))]"
+          ],
+          "tags": {
+            "displayName": "config"
+          },
+          "properties": {
+            "APPINSIGHTS_INSTRUMENTATIONKEY": "[reference(concat('microsoft.insights/components/', parameters('site_name'), '-insights')).InstrumentationKey]",
+            "PROJECT":  "auth-web/auth-web.csproj"
+          }
+        },
+        {
+          "comments": "",
+          "type": "Microsoft.Web/sites/hostNameBindings",
+          "name": "[concat(parameters('site_name'), '-auth/', parameters('site_name'), '-auth.azurewebsites.net')]",
+          "apiVersion": "2016-08-01",
+          "location": "West US 2",
+          "dependsOn": [
+            "[resourceId('Microsoft.Web/sites', concat(parameters('site_name'), '-auth'))]"
+          ]
+        }
+      ],
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/serverfarms', concat(parameters('site_name'),'-apps'))]",
+        "[resourceId('microsoft.insights/components/', concat(parameters('site_name'), '-insights'))]"
+      ]
+    }
+  ]
+}
